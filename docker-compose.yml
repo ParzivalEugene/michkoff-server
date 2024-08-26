@@ -1,0 +1,52 @@
+name: "michkoff-server"
+
+services:
+  traefik:
+    container_name: traefik
+    image: traefik:latest
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - CF_API_EMAIL=${CF_API_EMAIL}
+      - CF_API_KEY=${CF_API_KEY}
+    labels:
+      - "traefik.http.routers.traefik.rule=Host(`traefik.${MICHKOFF_DOMAIN}`)"
+      - "traefik.http.routers.traefik.entrypoints=websecure"
+      - "traefik.http.routers.traefik.service=api@internal"
+      - "traefik.http.routers.traefik.tls.certresolver=myresolver"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./traefik/traefik.yml:/etc/traefik/traefik.yml
+      - ./traefik/dynamic_conf.yml:/etc/traefik/dynamic_conf.yml
+
+  links:
+    container_name: links
+    image: ghcr.io/parzivaleugene/links:latest
+    restart: always
+    ports:
+      - "3000"
+    environment:
+      - SPOTIFY_CLIENT_ID=${SPOTIFY_CLIENT_ID}
+      - SPOTIFY_CLIENT_SECRET=${SPOTIFY_CLIENT_SECRET}
+      - GH_TOKEN=${GH_TOKEN}
+    labels:
+      - "traefik.http.routers.links.rule=Host(`links.${MICHKOFF_DOMAIN}`)"
+      - "traefik.http.routers.links.entrypoints=websecure"
+      - "traefik.http.routers.links.tls=true"
+      - "traefik.http.services.links-app.loadbalancer.server.port=3000"
+      - "traefik.http.routers.links.tls.certresolver=myresolver"
+
+  portfolio:
+    container_name: portfolio
+    image: ghcr.io/parzivaleugene/michkoff-landing:latest
+    restart: always
+    ports:
+      - "3000"
+    labels:
+      - "traefik.http.routers.portfolio.rule=Host(`${MICHKOFF_DOMAIN}`)"
+      - "traefik.http.routers.portfolio.entrypoints=websecure"
+      - "traefik.http.routers.portfolio.tls=true"
+      - "traefik.http.services.portfolio-app.loadbalancer.server.port=3000"
+      - "traefik.http.routers.portfolio.tls.certresolver=myresolver"
